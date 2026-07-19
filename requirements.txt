@@ -1,0 +1,2 @@
+# Web framework used by app.py and the packaged local server.
+Flask>=3.1,<4
