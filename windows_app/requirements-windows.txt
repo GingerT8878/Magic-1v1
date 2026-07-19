@@ -1,0 +1,3 @@
+# Windows-only native window and executable packager.
+pywebview>=5
+pyinstaller>=6,<7
