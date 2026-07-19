@@ -1,0 +1,256 @@
+<!doctype html>
+<!-- Single-page Flask/WKWebView UI. Element IDs are the contract with app.js;
+     dynamic state and artwork are populated from authoritative JSON. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Magic 1v1</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <!-- Title/menu layer; hidden when a configured match begins. -->
+  <section class="title-screen" id="titleScreen">
+    <div class="pixel-stars" aria-hidden="true"></div>
+    <div class="title-particles" aria-hidden="true">
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+    </div>
+    <canvas class="title-gallery" id="titleDecorCanvas" aria-hidden="true"></canvas>
+    <div class="title-content">
+      <pre class="ascii-title" aria-label="Magic 1v1">
+ ____    ____      _       _______ _____  ______    __ ____   ____ __
+|_   \  /   _|    / \     /  ___  |_   _.' ___  |  /  |_  _| |_  _/  |
+  |   \/   |     / _ \   / .'   \_| | |/ .'   \_|  `| | \ \   / / `| |
+  | |\  /| |    / ___ \  | |   ____ | || |          | |  \ \ / /   | |
+ _| |_\/_| |_ _/ /   \ \ \ `.___] |_| |\ `.___.'\  _| |_  \ ' /   _| |_
+|_____||_____|____| |____|\______.|_____`.____ ./ |_____|  \_/   |_____|</pre>
+      <h1 class="mobile-title">Magic 1v1</h1>
+      <p class="creator-line">By Steven</p>
+      <div class="title-rule" aria-hidden="true"></div>
+      <div class="title-menu" aria-label="Main menu">
+        <div class="singleplayer-menu-row">
+          <button class="mode-button" type="button" data-mode="singleplayer">
+            <span class="menu-number">1</span>
+            <span><strong>Singleplayer</strong><small>Fight the Python bot</small></span>
+          </button>
+          <label class="difficulty-picker"><span>Difficulty</span>
+            <select id="botDifficulty" aria-label="Bot difficulty">
+              <option value="dummy">Dummy</option>
+              <option value="easy">Easy</option>
+              <option value="normal" selected>Normal</option>
+              <option value="hard">Hard</option>
+            </select>
+          </label>
+        </div>
+        <button class="mode-button" type="button" data-mode="two_player">
+          <span class="menu-number">2</span>
+          <span><strong>2-Player</strong><small>1v1 a friend</small></span>
+        </button>
+        <button class="tutorial-button" id="tutorialButton" type="button">
+          <span class="menu-number">?</span>
+          <span><strong>Tutorial</strong><small>How to play?</small></span>
+        </button>
+      </div>
+    </div>
+    <p class="title-version">Magic 1v1 (Alpha)</p>
+  </section>
+
+  <!-- Live match: header, fighter stats, arena, commands, and battle log. -->
+  <main class="game-shell" id="gameShell" hidden>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark sorcerer-logo" aria-hidden="true"><svg viewBox="0 0 128 128"><rect width="128" height="128" fill="#111821"/><rect x="23" y="84" width="82" height="44" fill="#a970ff"/><rect x="35" y="47" width="60" height="38" fill="#d8c7a6"/><rect x="95" y="62" width="10" height="12" fill="#d8c7a6"/><rect x="27" y="31" width="76" height="16" fill="#0b1017"/><rect x="65" y="54" width="38" height="9" fill="#111821"/></svg></span>
+        <div><h1>Magic 1v1</h1><p id="matchLabel">Singleplayer duel</p></div>
+      </div>
+      <div class="turn-display" aria-live="polite">
+        <span>Turn <strong id="turnNumber">1</strong></span>
+        <span class="turn-owner" id="turnOwner">Your turn</span>
+      </div>
+      <button class="icon-button" id="newGameButton" type="button" title="Main menu" aria-label="Return to main menu">↩</button>
+    </header>
+
+    <section class="fighters" aria-label="Combatant statistics">
+      <article class="fighter fighter-player">
+        <div class="fighter-heading">
+          <div><span class="side-label" id="playerLabel">Player 1</span><h2 id="playerClass">Swordsman</h2><span class="fighter-meta" id="playerMeta">Speed 3 · Items 0</span></div>
+          <span class="weapon"><strong id="playerWeapon">Sword</strong><small id="playerWeaponStats">Range 3 · Damage 20 · Stamina cost 15</small></span>
+        </div>
+        <div class="meters" id="playerMeters"></div>
+        <div class="status-row" id="playerStatuses" aria-label="Player 1 status effects"></div>
+      </article>
+
+      <div class="distance-readout" aria-label="Distance between fighters">
+        <span>Distance</span><strong id="distanceValue">15</strong>
+      </div>
+
+      <article class="fighter fighter-enemy">
+        <div class="fighter-heading">
+          <div><span class="side-label" id="enemyLabel">Opponent</span><h2 id="enemyClass">Assassin</h2><span class="fighter-meta" id="enemyMeta">Speed 4 · Items 0</span></div>
+          <span class="weapon"><strong id="enemyWeapon">Daggers</strong><small id="enemyWeaponStats">Range 2 · Damage 15 · Stamina cost 10 · Bonus +1 speed</small></span>
+        </div>
+        <div class="meters" id="enemyMeters"></div>
+        <div class="status-row" id="enemyStatuses" aria-label="Opponent status effects"></div>
+      </article>
+    </section>
+
+    <section class="arena" aria-label="Battle arena">
+      <canvas id="arenaCanvas" width="1200" height="360"></canvas>
+      <div class="arena-message" id="arenaMessage" aria-live="polite">Choose your action</div>
+      <div class="game-over-panel" id="gameOverPanel" hidden>
+        <strong id="gameOverTitle">Duel complete</strong>
+        <span id="gameOverWinner"></span>
+        <div><button class="primary-button" id="rematchButton" type="button">Rematch</button>
+        <button class="secondary-button" id="gameOverMenuButton" type="button">Back to menu</button></div>
+      </div>
+    </section>
+
+    <section class="command-area">
+      <div class="command-panel">
+        <div class="tabs" role="tablist" aria-label="Command category">
+          <button class="tab active" data-tab="actions" role="tab" aria-selected="true">Actions</button>
+          <button class="tab" data-tab="spells" role="tab" aria-selected="false">Spells</button>
+          <button class="tab" data-tab="items" role="tab" aria-selected="false">Items</button>
+        </div>
+        <div class="command-grid" id="commandGrid"></div>
+      </div>
+
+      <aside class="battle-log">
+        <div class="panel-heading">
+          <h2>Battle log</h2>
+          <button class="icon-button small" id="clearLogButton" type="button" title="Clear battle log" aria-label="Clear battle log">×</button>
+        </div>
+        <div id="logList" aria-live="polite"></div>
+      </aside>
+    </section>
+  </main>
+
+  <!-- Match configuration and class selection. -->
+  <dialog id="setupDialog">
+    <form method="dialog" id="setupForm">
+      <div class="setup-heading">
+        <span class="brand-mark sorcerer-logo" aria-hidden="true"><svg viewBox="0 0 128 128"><rect width="128" height="128" fill="#111821"/><rect x="23" y="84" width="82" height="44" fill="#a970ff"/><rect x="35" y="47" width="60" height="38" fill="#d8c7a6"/><rect x="95" y="62" width="10" height="12" fill="#d8c7a6"/><rect x="27" y="31" width="76" height="16" fill="#0b1017"/><rect x="65" y="54" width="38" height="9" fill="#111821"/></svg></span>
+        <div><span class="dialog-eyebrow" id="setupMode">Singleplayer</span><h2 id="setupTitle">Choose your fighter</h2></div>
+        <button class="icon-button small dialog-close" id="setupCloseButton" type="button" title="Back" aria-label="Back to title screen">×</button>
+      </div>
+
+      <div class="player-picker" id="playerPicker" hidden>
+        <button class="picker-button active" type="button" data-side="player">Player 1 <strong id="playerOneChoice">Swordsman</strong></button>
+        <button class="picker-button" type="button" data-side="enemy">Player 2 <strong id="playerTwoChoice">Assassin</strong></button>
+      </div>
+
+      <div class="class-grid" id="classGrid"></div>
+      <div class="setup-actions">
+        <label id="opponentField">Opponent
+          <select id="opponentSelect"><option value="random">Random class</option></select>
+        </label>
+        <button class="primary-button" type="submit">Begin duel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="weaponDialog" class="weapon-dialog">
+    <div class="weapon-choice">
+      <span class="dialog-eyebrow">Weapon found</span>
+      <h2 id="foundWeaponName">New weapon</h2>
+      <p>Replace your currently equipped weapon?</p>
+      <div class="weapon-choice-actions">
+        <button class="secondary-button" id="rejectWeaponButton" type="button">Leave it</button>
+        <button class="primary-button" id="acceptWeaponButton" type="button">Equip it</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="leaveDialog" class="confirm-dialog">
+    <div class="weapon-choice">
+      <span class="dialog-eyebrow">Leave match</span>
+      <h2>Are you sure?</h2>
+      <div class="weapon-choice-actions">
+        <button class="secondary-button" id="cancelLeaveButton" type="button">No</button>
+        <button class="primary-button" id="confirmLeaveButton" type="button">Yes</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Guide; class and weapon panes reuse authoritative API data. -->
+  <dialog id="tutorialDialog" class="tutorial-dialog">
+    <div class="tutorial-shell">
+      <div class="setup-heading tutorial-heading">
+        <span class="brand-mark" aria-hidden="true">?</span>
+        <div><span class="dialog-eyebrow">Field guide</span><h2>How to play</h2></div>
+        <button class="icon-button small dialog-close" id="tutorialCloseButton" type="button" title="Back" aria-label="Close tutorial">×</button>
+      </div>
+      <div class="tutorial-tabs" role="tablist" aria-label="Tutorial section">
+        <button class="tutorial-tab active" type="button" data-tutorial="basics">Basics</button>
+        <button class="tutorial-tab" type="button" data-tutorial="classes">Classes</button>
+        <button class="tutorial-tab" type="button" data-tutorial="weapons">Weapons</button>
+        <button class="tutorial-tab" type="button" data-tutorial="actions">Actions</button>
+        <button class="tutorial-tab" type="button" data-tutorial="spells">Spells</button>
+        <button class="tutorial-tab" type="button" data-tutorial="items">Items</button>
+      </div>
+      <div class="tutorial-content">
+        <section class="tutorial-pane active" data-pane="basics">
+          <h3>Win the duel</h3>
+          <p>Reduce the other fighter's health to zero. At the start, each side selects a class; every class has different base stats and a starting weapon, creating faster, tougher, weapon-focused, or magic-focused play styles.</p>
+          <dl class="tutorial-list">
+            <div><dt>Health</dt><dd>Reach zero and the duel is lost.</dd></div>
+            <div><dt>Stamina</dt><dd>Powers weapons and movement.</dd></div>
+            <div><dt>Mana</dt><dd>Powers magic spells.</dd></div>
+            <div><dt>Speed</dt><dd>Controls how far Approach, Step Back, Charge, and Escape move the fighter.</dd></div>
+            <div><dt>Distance</dt><dd>Controls weapon reach and spell accuracy.</dd></div>
+          </dl>
+        </section>
+        <section class="tutorial-pane" data-pane="classes">
+          <h3>Choose a play style</h3>
+          <p>Before the duel, choose your fighter class. In 2-Player, each player chooses separately; in Singleplayer, choose your class and the opponent class or Random. Class stats stay fixed, while scavenging can replace the starting weapon and its bonus.</p>
+          <div class="tutorial-class-grid" id="tutorialClassGrid"></div>
+        </section>
+        <section class="tutorial-pane" data-pane="weapons">
+          <h3>Weapons</h3>
+          <p>Weapon range determines how close you must be to attack. Every equipped weapon also grants its listed stat bonus.</p>
+          <div class="tutorial-list" id="tutorialWeaponList"></div>
+        </section>
+        <section class="tutorial-pane" data-pane="actions">
+          <h3>Combat actions</h3>
+          <div class="tutorial-list tutorial-icon-list">
+            <div><span class="tutorial-entry-icon action-icon">🚶‍➡️</span><span class="tutorial-entry-copy"><strong>Approach</strong><small>Move closer at no stamina cost.</small></span></div>
+            <div><span class="tutorial-entry-icon action-icon">🚶</span><span class="tutorial-entry-copy"><strong>Step Back</strong><small>Move away by the same amount as Approach at no stamina cost.</small></span></div>
+            <div><span class="tutorial-entry-icon action-icon">⚔️</span><span class="tutorial-entry-copy"><strong>Attack</strong><small>Strike with your equipped weapon.</small></span></div>
+            <div><span class="tutorial-entry-icon action-icon">🏃‍➡️</span><span class="tutorial-entry-copy"><strong>Charge</strong><small>Move at full speed, then attack if weapon range is reached. Assassin alone stuns and gains an extra action after a successful Charge; Swordsman Charge can critically hit.</small></span></div>
+            <div><span class="tutorial-entry-icon action-icon">🏃</span><span class="tutorial-entry-copy"><strong>Escape</strong><small>Increase distance for 10 stamina.</small></span></div>
+            <div><span class="tutorial-entry-icon action-icon">🧘</span><span class="tutorial-entry-copy"><strong>Meditate</strong><small>Randomly restores 0–5 health, stamina, and mana independently.</small></span></div>
+            <div><span class="tutorial-entry-icon action-icon">🔍</span><span class="tutorial-entry-copy"><strong>Scavenge</strong><small>Spend a random 0–5 stamina and 0–5 mana to search for items or weapons.</small></span></div>
+          </div>
+          <table class="tutorial-loot-table">
+            <caption>Scavenge loot probabilities</caption>
+            <thead><tr><th scope="col">Result</th><th scope="col">Chance</th></tr></thead>
+            <tbody id="tutorialLootBody"></tbody>
+          </table>
+        </section>
+        <section class="tutorial-pane" data-pane="spells">
+          <h3>Magic</h3>
+          <p>Spells always land within their hit range. Between hit range and maximum range, accuracy decreases linearly to 0% at maximum range.</p>
+          <div class="tutorial-list tutorial-icon-list">
+            <div><span class="tutorial-entry-icon spell-icon">🔥</span><span class="tutorial-entry-copy"><strong>Fireball · 25 mana</strong><small>Deals 15 immediate damage. Fire then deals 10 damage per turn for 2 turns, for 20 additional damage if both ticks complete. Hit range 4 · Max range 8.</small></span></div>
+            <div><span class="tutorial-entry-icon spell-icon">🧊</span><span class="tutorial-entry-copy"><strong>Freeze · 40 mana</strong><small>Deals 5 damage, encases the target in ice, and grants 3 different bonus actions. Charge and Freeze may be combined, but each can only be used once during the whole turn. Active class abilities can consume a bonus action. Hit range 5 · Max range 10.</small></span></div>
+            <div><span class="tutorial-entry-icon spell-icon">❤️</span><span class="tutorial-entry-copy"><strong>Heal · 25 mana</strong><small>Restores up to 20 health without exceeding maximum health. Heal targets only the caster and cannot miss.</small></span></div>
+            <div><span class="tutorial-entry-icon spell-icon">☠️</span><span class="tutorial-entry-copy"><strong>Poison · 25 mana</strong><small>Deals 5 immediate damage. Poison then deals 5 damage per turn for 2 turns, for 10 additional damage if both ticks complete. Recasting adds 2 more turns. Hit range 6 · Max range 12.</small></span></div>
+            <div><span class="tutorial-entry-icon spell-icon">🫸</span><span class="tutorial-entry-copy"><strong>Push · 10 mana</strong><small>Moves the opponent 3 distance away without dealing damage. Useful for escaping melee range. Hit range 8 · Max range 16.</small></span></div>
+            <div><span class="tutorial-entry-icon spell-icon">🤜</span><span class="tutorial-entry-copy"><strong>Pull · 10 mana</strong><small>Moves the opponent 3 distance closer without dealing damage, helping weapons reach their target. Hit range 8 · Max range 16.</small></span></div>
+          </div>
+        </section>
+        <section class="tutorial-pane" data-pane="items">
+          <h3>Consumables</h3>
+          <div class="tutorial-list tutorial-icon-list">
+            <div><span class="tutorial-entry-icon item-icon">🍎</span><span class="tutorial-entry-copy"><strong>Apple</strong><small>Restores 10 health and 20 mana.</small></span></div>
+            <div><span class="tutorial-entry-icon item-icon">🩹</span><span class="tutorial-entry-copy"><strong>Bandage</strong><small>Restores 20 health.</small></span></div>
+            <div><span class="tutorial-entry-icon item-icon">✝️</span><span class="tutorial-entry-copy"><strong>Holy Water</strong><small>Immediately restores 10 health and grants two Holy ticks. Each later Holy tick restores 5 health and 5 mana.</small></span></div>
+            <div><span class="tutorial-entry-icon item-icon">🥩</span><span class="tutorial-entry-copy"><strong>Steak</strong><small>Restores 5 health, 20 stamina and 5 mana.</small></span></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
