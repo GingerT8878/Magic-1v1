@@ -50,7 +50,10 @@ def main():
             min_size=(720, 620),
             background_color="#0c0e12",
         )
-        webview.start(debug=False, private_mode=True)
+        # The UI uses modern JavaScript that the deprecated MSHTML/IE backend
+        # cannot run. Edge Chromium is included with Windows 11 and almost all
+        # supported Windows 10 installations through the WebView2 Runtime.
+        webview.start(gui="edgechromium", debug=False, private_mode=True)
     finally:
         server.stop()
 

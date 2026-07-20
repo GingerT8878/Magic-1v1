@@ -1,0 +1,41 @@
+# OS and editor metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+
+# Python environments and caches
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Generated applications and packaging output
+build/
+dist/
+Magic 1v1.app/
+/Magic 1v1 pt2.py
+/mac_app/
+windows_app/AppIcon.ico
+windows_app/AppIcon-256.png
+*.exe
+*.msi
+*.dmg
+*.pkg
+*.zip
+
+# Local logs and temporary files
+*.log
+*.tmp
